@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -16,6 +16,8 @@ import registerBg from '../../assets/register-bg.png'
 
 
 function Register() {
+  const navigate = useNavigate()
+
   // =========================
   // Form State
   // =========================
@@ -29,6 +31,8 @@ function Register() {
   })
 
   const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [serverError, setServerError] = useState('')
 
 
   // =========================
@@ -48,6 +52,8 @@ function Register() {
       ...prev,
       [name]: '',
     }))
+
+    setServerError('')
   }
 
 
@@ -106,16 +112,74 @@ function Register() {
   // Submit
   // =========================
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
+
+    setServerError('')
 
     if (!validateForm()) {
       return
     }
 
-    // Temporary
-    // سيتم استبدال هذا لاحقًا بطلب API
-    console.log('Register:', formData)
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/signup`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+            confirm_password: formData.confirmPassword,
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // 422: أخطاء تحقق مفصّلة قادمة من السيرفر (detail[].msg)
+        if (Array.isArray(data.detail)) {
+          const firstError = data.detail[0]
+          setServerError(firstError?.msg || 'يرجى التحقق من البيانات المدخلة')
+        } else {
+          setServerError(
+            data.detail ||
+              data.message ||
+              'حدث خطأ أثناء إنشاء الحساب، حاول مرة أخرى'
+          )
+        }
+        return
+      }
+
+      // نجاح إنشاء الحساب (201)
+      console.log('Register success:', data)
+
+      // تخزين التوكن (المستخدم يصبح مسجّل دخول تلقائيًا بعد التسجيل)
+      if (data.access_token) {
+        localStorage.setItem('ghosn_token', data.access_token)
+      }
+
+      if (data.refresh_token) {
+        localStorage.setItem('ghosn_refresh_token', data.refresh_token)
+      }
+
+      // التوجيه للصفحة الرئيسية بعد النجاح
+      navigate('/login')
+    } catch (error) {
+      console.error('Register request failed:', error)
+      setServerError(
+        'تعذر الاتصال بالسيرفر، تحقق من اتصالك بالإنترنت'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
 
@@ -460,14 +524,32 @@ function Register() {
 
 
               {/* =========================
+                  Server Error
+              ========================= */}
+
+              {serverError && (
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                    text-red-500
+                  "
+                >
+                  {serverError}
+                </p>
+              )}
+
+
+              {/* =========================
                   Submit Button
               ========================= */}
 
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="mt-2"
               >
-                انشاء حساب
+                {isSubmitting ? 'جارٍ إنشاء الحساب...' : 'انشاء حساب'}
               </Button>
 
             </form>

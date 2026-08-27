@@ -1,148 +1,49 @@
-import { useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
-import otpImage from '../../assets/otp-verification.png'
+import Button from '../../components/ui/Button'
+import Input from '../../components/ui/Input'
+import { EmailIcon } from '../../components/ui/Icons'
 
-function OtpVerification() {
+import forgotPasswordIllustration from '../../assets/forget-password.png'
+
+function ForgotPassword() {
   const navigate = useNavigate()
-  const location = useLocation()
 
   // =========================
-  // Email coming from the previous screen
+  // Form State
   // =========================
-  // أولوية القراءة:
-  // 1) من الصفحة السابقة عبر navigate(..., { state: { email } })
-  // 2) من localStorage (احتياطي، في حال تحديث الصفحة)
-  // 3) نص افتراضي في حال عدم توفر أي منهما
 
-  const email =
-    location.state?.email ||
-    localStorage.getItem('ghosn_email') ||
-    'بريدك الإلكتروني'
-
-
-  const OTP_LENGTH = 5
-
-  const [otp, setOtp] = useState(
-    Array(OTP_LENGTH).fill('')
-  )
-
+  const [email, setEmail] = useState('')
   const [error, setError] = useState('')
-
-  const inputRefs = useRef([])
+  const [serverError, setServerError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // =========================
-  // Handle OTP Change
+  // Handle Input Change
   // =========================
 
-  const handleChange = (index, value) => {
-    // السماح بالأرقام فقط
-    const numericValue = value.replace(/\D/g, '')
-
-    if (!numericValue) {
-      setOtp((prev) => {
-        const newOtp = [...prev]
-        newOtp[index] = ''
-        return newOtp
-      })
-
-      return
-    }
-
-    setOtp((prev) => {
-      const newOtp = [...prev]
-      newOtp[index] = numericValue.slice(-1)
-      return newOtp
-    })
+  const handleChange = (event) => {
+    setEmail(event.target.value)
 
     setError('')
-
-    // الانتقال للخانة التالية
-    if (
-      index < OTP_LENGTH - 1 &&
-      numericValue
-    ) {
-      inputRefs.current[index + 1]?.focus()
-    }
+    setServerError('')
   }
 
   // =========================
-  // Handle Key Down
+  // Validation
   // =========================
 
-  const handleKeyDown = (index, event) => {
-    if (
-      event.key === 'Backspace' &&
-      !otp[index] &&
-      index > 0
-    ) {
-      inputRefs.current[index - 1]?.focus()
-    }
+  const validateForm = () => {
+    const trimmedEmail = email.trim()
 
-    if (
-      event.key === 'ArrowLeft' &&
-      index > 0
-    ) {
-      inputRefs.current[index - 1]?.focus()
-    }
-
-    if (
-      event.key === 'ArrowRight' &&
-      index < OTP_LENGTH - 1
-    ) {
-      inputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  // =========================
-  // Handle Paste
-  // =========================
-
-  const handlePaste = (event) => {
-    event.preventDefault()
-
-    const pastedValue = event.clipboardData
-      .getData('text')
-      .replace(/\D/g, '')
-      .slice(0, OTP_LENGTH)
-
-    if (!pastedValue) {
-      return
-    }
-
-    const newOtp = Array(OTP_LENGTH).fill('')
-
-    pastedValue
-      .split('')
-      .forEach((digit, index) => {
-        newOtp[index] = digit
-      })
-
-    setOtp(newOtp)
-    setError('')
-
-    const nextIndex = Math.min(
-      pastedValue.length,
-      OTP_LENGTH - 1
-    )
-
-    inputRefs.current[nextIndex]?.focus()
-  }
-
-  // =========================
-  // Validate OTP
-  // =========================
-
-  const validateOtp = () => {
-    const otpValue = otp.join('')
-
-    if (otpValue.length !== OTP_LENGTH) {
-      setError('يرجى إدخال رمز التحقق كاملًا')
+    if (!trimmedEmail) {
+      setError('يرجى إدخال البريد الإلكتروني')
       return false
     }
 
-    if (!/^\d+$/.test(otpValue)) {
-      setError('رمز التحقق يجب أن يحتوي على أرقام فقط')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('يرجى إدخال بريد إلكتروني صحيح')
       return false
     }
 
@@ -153,36 +54,115 @@ function OtpVerification() {
   // Submit
   // =========================
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
-    if (!validateOtp()) {
+    setError('')
+    setServerError('')
+
+    // Validate form
+    if (!validateForm()) {
       return
     }
 
-    const otpValue = otp.join('')
+    setIsSubmitting(true)
 
-    console.log('OTP:', otpValue)
-    console.log('Verifying for email:', email)
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
 
-    // الانتقال إلى صفحة إعادة تعيين كلمة المرور
-    navigate('/reset-password', { state: { email } })
+      // Check API URL
+      if (!apiBaseUrl) {
+        throw new Error(
+          'VITE_API_BASE_URL غير موجود في ملف .env'
+        )
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/auth/forgot-password`,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+          },
+
+          body: JSON.stringify({
+            email: email.trim(),
+          }),
+        }
+      )
+
+      // Try to read JSON response
+      let data = {}
+
+      try {
+        data = await response.json()
+      } catch {
+        data = {}
+      }
+
+      // =========================
+      // Server Error
+      // =========================
+
+      if (!response.ok) {
+        if (Array.isArray(data.detail)) {
+          const firstError = data.detail[0]
+
+          setServerError(
+            firstError?.msg ||
+              'يرجى التحقق من البريد الإلكتروني'
+          )
+        } else {
+          setServerError(
+            data.detail ||
+              data.message ||
+              'حدث خطأ أثناء إرسال الطلب، حاول مرة أخرى'
+          )
+        }
+
+        return
+      }
+
+      // =========================
+      // Success
+      // =========================
+
+      console.log(
+        'Forgot password success:',
+        data
+      )
+
+      // Store email for the next steps
+      localStorage.setItem(
+        'ghosn_email',
+        email.trim()
+      )
+
+      // Navigate to email verification page
+      navigate('/verify-email', {
+        state: {
+          email: email.trim(),
+        },
+      })
+
+    } catch (err) {
+      console.error(
+        'Forgot password request failed:',
+        err
+      )
+
+      setServerError(
+        'تعذر الاتصال بالسيرفر، تحقق من اتصالك بالإنترنت'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // =========================
-  // Resend OTP
+  // UI
   // =========================
-
-  const handleResend = () => {
-    console.log('Resend OTP to:', email)
-
-    setOtp(Array(OTP_LENGTH).fill(''))
-    setError('')
-
-    inputRefs.current[0]?.focus()
-
-    // سيتم ربطها لاحقًا مع API
-  }
 
   return (
     <main
@@ -190,22 +170,20 @@ function OtpVerification() {
       className="
         min-h-screen
         bg-white
-        flex
-        items-center
-        justify-center
         px-5
         py-10
+        sm:px-8
       "
     >
-
-      <section
+      <div
         className="
-          w-full
-          max-w-[520px]
+          mx-auto
           flex
+          min-h-[calc(100vh-5rem)]
+          w-full
+          max-w-[420px]
           flex-col
-          items-center
-          text-center
+          justify-center
         "
       >
 
@@ -213,224 +191,144 @@ function OtpVerification() {
             Illustration
         ========================= */}
 
-        <div className="mb-7 flex justify-center">
-
+        <div className="mb-6 flex justify-center">
           <img
-            src={otpImage}
-            alt="التحقق من رمز OTP"
+            src={forgotPasswordIllustration}
+            alt="نسيت كلمة المرور"
             className="
               h-auto
-              w-[280px]
+              w-full
+              max-w-[260px]
               object-contain
-              sm:w-[330px]
             "
           />
-
         </div>
 
 
         {/* =========================
-            Title
+            Header
         ========================= */}
 
-        <h1
-          className="
-            text-2xl
-            sm:text-3xl
-            font-bold
-            text-black
-          "
-        >
-          أدخل رمز التحقق الخاص بك
-        </h1>
+        <header className="mb-8 text-center">
 
-
-        {/* =========================
-            Subtitle (with the actual email)
-        ========================= */}
-
-        <p
-          className="
-            mt-3
-            max-w-[390px]
-            text-sm
-            sm:text-base
-            leading-7
-            text-gray-500
-          "
-        >
-          يرجى التحقق من بريدك الإلكتروني{' '}
-          <span
-            dir="ltr"
+          <h1
             className="
-              inline-block
-              font-bold
-              text-[#5B961F]
+              text-2xl
+              font-extrabold
+              text-black
             "
           >
-            {email}
-          </span>{' '}
-          للاطلاع على رمز التحقق الذي أرسلناه ثم إدخاله هنا
-        </p>
+            نسيت كلمة المرور؟
+          </h1>
+
+          <p
+            className="
+              mt-2
+              text-sm
+              leading-6
+              text-gray-500
+            "
+          >
+            أدخل بريدك الإلكتروني وسنرسل لك رمز التحقق
+            لإعادة تعيين كلمة المرور
+          </p>
+
+        </header>
 
 
         {/* =========================
-            OTP Form
+            Forgot Password Form
         ========================= */}
 
         <form
           onSubmit={handleSubmit}
-          className="
-            mt-7
-            w-full
-            flex
-            flex-col
-            items-center
-          "
+          className="space-y-5"
+          noValidate
         >
 
-          {/* OTP Inputs */}
+          {/* Email */}
 
-          <div
-            dir="ltr"
-            className="
-              flex
-              items-center
-              justify-center
-              gap-3
-              sm:gap-4
-            "
-            onPaste={handlePaste}
-          >
-
-            {otp.map((digit, index) => (
-
-              <input
-                key={index}
-                ref={(element) => {
-                  inputRefs.current[index] = element
-                }}
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={1}
-                value={digit}
-                onChange={(event) =>
-                  handleChange(
-                    index,
-                    event.target.value
-                  )
-                }
-                onKeyDown={(event) =>
-                  handleKeyDown(
-                    index,
-                    event
-                  )
-                }
-                aria-label={`رمز التحقق ${index + 1}`}
-                className={`
-                  h-14
-                  w-14
-                  rounded-lg
-                  border
-                  bg-white
-                  text-center
-                  text-xl
-                  font-semibold
-                  text-black
-                  outline-none
-                  transition
-                  sm:h-14
-                  sm:w-14
-                  ${
-                    error
-                      ? 'border-red-400 focus:border-red-500'
-                      : 'border-gray-300 focus:border-[#5B961F] focus:ring-1 focus:ring-[#5B961F]'
-                  }
-                `}
-              />
-
-            ))}
-
-          </div>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            label="البريد الإلكتروني"
+            placeholder="أدخل بريدك الإلكتروني"
+            value={email}
+            onChange={handleChange}
+            error={error}
+            icon={<EmailIcon />}
+            autoComplete="email"
+          />
 
 
-          {/* Error */}
+          {/* =========================
+              Server Error
+          ========================= */}
 
-          {error && (
+          {serverError && (
             <p
               className="
-                mt-3
+                text-center
                 text-sm
+                font-medium
                 text-red-500
               "
             >
-              {error}
+              {serverError}
             </p>
           )}
 
 
           {/* =========================
-              Resend OTP
+              Submit Button
           ========================= */}
 
-          <p
-            className="
-              mt-4
-              text-sm
-              text-gray-500
-            "
-          >
-            لم يصلك الرمز؟
-
-            <button
-              type="button"
-              onClick={handleResend}
-              className="
-                mr-1
-                font-medium
-                text-[#9AA3B2]
-                transition
-                hover:text-[#5B961F]
-                hover:underline
-              "
-            >
-              إعادة الإرسال خلال (59 ثانية)
-            </button>
-          </p>
-
-
-          {/* =========================
-              Continue Button
-          ========================= */}
-
-          <button
+          <Button
             type="submit"
-            className="
-              mt-7
-              w-full
-              max-w-[450px]
-              rounded-lg
-              bg-[#5B961F]
-              py-4
-              text-base
-              font-bold
-              text-white
-              shadow-sm
-              transition
-              hover:bg-[#4f851b]
-              active:scale-[0.99]
-            "
+            disabled={isSubmitting}
+            className="mt-2"
           >
-            متابعة
-          </button>
+            {isSubmitting
+              ? 'جارٍ الإرسال...'
+              : 'إرسال رمز التحقق'}
+          </Button>
 
         </form>
 
-      </section>
 
+        {/* =========================
+            Back to Login
+        ========================= */}
+
+        <p
+          className="
+            mt-8
+            text-center
+            text-sm
+            text-gray-500
+          "
+        >
+          تذكرت كلمة المرور؟
+
+          <Link
+            to="/login"
+            className="
+              mr-1
+              font-bold
+              text-[#5B961E]
+              transition
+              hover:underline
+            "
+          >
+            تسجيل الدخول
+          </Link>
+
+        </p>
+
+      </div>
     </main>
   )
 }
 
-export default OtpVerification
+export default ForgotPassword

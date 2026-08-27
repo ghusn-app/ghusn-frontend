@@ -18,9 +18,12 @@ function Login() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    rememberMe: false,
   })
 
   const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [serverError, setServerError] = useState('')
 
 
   // =========================
@@ -28,11 +31,11 @@ function Login() {
   // =========================
 
   const handleChange = (event) => {
-    const { name, value } = event.target
+    const { name, value, type, checked } = event.target
 
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }))
 
     setErrors((prev) => ({
@@ -73,15 +76,62 @@ function Login() {
   // Submit
   // =========================
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
+
+    setServerError('')
 
     if (!validateForm()) {
       return
     }
 
-    // سيتم استبداله لاحقًا بطلب API
-    console.log('Login:', formData)
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // رسالة الخطأ القادمة من السيرفر (إن وُجدت)
+        setServerError(
+          data.detail ||
+            data.message ||
+            'حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى'
+        )
+        return
+      }
+
+      // نجاح تسجيل الدخول
+      console.log('Login success:', data)
+
+      // تخزين التوكن إن وُجد في الرد
+      if (data.access_token) {
+        localStorage.setItem('ghosn_token', data.access_token)
+      }
+
+      // التوجيه للصفحة الرئيسية بعد النجاح
+      // navigate('/dashboard')
+    } catch (error) {
+      console.error('Login request failed:', error)
+      setServerError(
+        'تعذر الاتصال بالسيرفر، تحقق من اتصالك بالإنترنت'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
 
@@ -311,6 +361,9 @@ function Login() {
 
                 <input
                   type="checkbox"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
                   className="
                     h-4
                     w-4
@@ -331,17 +384,35 @@ function Login() {
 
 
             {/* =========================
+                Server Error
+            ========================= */}
+
+            {serverError && (
+              <p
+                className="
+                  text-sm
+                  font-medium
+                  text-red-500
+                "
+              >
+                {serverError}
+              </p>
+            )}
+
+
+            {/* =========================
                 Login Button
             ========================= */}
 
             <Button
               type="submit"
+              disabled={isSubmitting}
               className="
                 mt-2
                 w-full
               "
             >
-              تسجيل الدخول
+              {isSubmitting ? 'جارٍ تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
 
           </form>

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-
+import OtpVerification from './pages/Auth/OtpVerification'
 import Splash from '../pages/Splash/Splash'
 import Onboarding from '../pages/Onboarding/Onboarding'
 import Login from '../pages/Auth/Login'
@@ -12,6 +12,8 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Splash />} />
+
+        <Route path="/otp-verification" element={<OtpVerification />} />
 
         <Route path="/onboarding" element={<Onboarding />} />
 
