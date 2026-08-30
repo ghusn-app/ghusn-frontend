@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { GoogleLogin } from '@react-oauth/google'
 
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -184,15 +185,68 @@ function Register() {
 
 
   // =========================
-  // Google Sign-Up (placeholder)
+  // Google Sign-Up (real integration)
   // =========================
-  // ⚠️ يحتاج ربطًا فعليًا لاحقًا:
-  // 1. Client ID من Google Cloud Console
-  // 2. مكتبة @react-oauth/google أو ما شابه
-  // 3. Endpoint من الباك إند لاستقبال توكن Google (مثال: POST /auth/google)
+  // الباك إند يتوقع "id_token" (JWT من Google) وليس access_token،
+  // لذلك نستخدم مكوّن <GoogleLogin> الرسمي الذي يُرجع credential = id_token
 
-  const handleGoogleSignup = () => {
-    console.log('Google signup clicked — not yet connected to a real API')
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setServerError('')
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/google`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id_token: credentialResponse.credential,
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (Array.isArray(data.detail)) {
+          const firstError = data.detail[0]
+          setServerError(firstError?.msg || 'تعذر إنشاء الحساب عبر Google')
+        } else {
+          setServerError(
+            data.detail ||
+              data.message ||
+              'تعذر إنشاء الحساب عبر Google، حاول مرة أخرى'
+          )
+        }
+        return
+      }
+
+      console.log('Google signup success:', data)
+
+      if (data.access_token) {
+        localStorage.setItem('ghosn_token', data.access_token)
+      }
+
+      if (data.refresh_token) {
+        localStorage.setItem('ghosn_refresh_token', data.refresh_token)
+      }
+
+      navigate('/login')
+    } catch (error) {
+      console.error('Google signup request failed:', error)
+      setServerError(
+        'تعذر الاتصال بالسيرفر، تحقق من اتصالك بالإنترنت'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleGoogleError = () => {
+    setServerError('تعذر تسجيل الدخول عبر Google، حاول مرة أخرى')
   }
 
 
@@ -596,60 +650,20 @@ function Register() {
                 Google Sign-Up
             ================================================= */}
 
-            <button
-              type="button"
-              onClick={handleGoogleSignup}
-              className="
-                flex
-                w-full
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                border
-                border-gray-300
-                bg-white
-                py-3
-                text-sm
-                font-medium
-                text-gray-700
-                transition
-                hover:bg-gray-50
-                active:scale-[0.99]
-              "
-            >
+            <div className="flex justify-center">
 
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 48 48"
-                aria-hidden="true"
-              >
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                theme="outline"
+                shape="pill"
+                size="large"
+                width="100%"
+                text="continue_with"
+                locale="ar"
+              />
 
-                <path
-                  fill="#FFC107"
-                  d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.3-.4-3.5z"
-                />
-
-                <path
-                  fill="#FF3D00"
-                  d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 15.9 3 8.9 7.6 6.3 14.7z"
-                />
-
-                <path
-                  fill="#4CAF50"
-                  d="M24 45c5.4 0 10.3-1.8 14-5l-6.5-5.5C29.5 36.4 26.9 37 24 37c-5.3 0-9.7-3.1-11.3-7.5l-6.5 5C9 40.3 15.9 45 24 45z"
-                />
-
-                <path
-                  fill="#1976D2"
-                  d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.5 5.5c-.5.4 6.9-5 6.9-15.7 0-1.2-.1-2.3-.4-3.5z"
-                />
-
-              </svg>
-
-              المتابعة من خلال Google
-
-            </button>
+            </div>
 
 
             {/* =================================================
