@@ -149,7 +149,7 @@ function Login() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/google`,
+        `${import.meta.env.VITE_API_BASE_URL}/auth/google/login`,
         {
           method: 'POST',
           headers: {
