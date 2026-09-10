@@ -122,6 +122,10 @@ function Login() {
         localStorage.setItem('ghosn_token', data.access_token)
       }
 
+      if (data.refresh_token) {
+        localStorage.setItem('ghosn_refresh_token', data.refresh_token)
+      }
+
       // التوجيه للصفحة الرئيسية بعد النجاح
       // navigate('/dashboard')
     } catch (error) {
