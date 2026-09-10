@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 
 import Button from '../../components/ui/Button'
@@ -16,8 +16,6 @@ import oliveBackground from '../../assets/olive-background.png'
 
 
 function Login() {
-  const navigate = useNavigate()
-
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -530,7 +528,7 @@ function Login() {
               theme="outline"
               shape="pill"
               size="large"
-              width="100%"
+              width="400"
               text="continue_with"
               locale="ar"
             />

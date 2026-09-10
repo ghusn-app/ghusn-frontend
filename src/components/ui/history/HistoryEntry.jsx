@@ -1,4 +1,4 @@
-import { ArrowLeft, Circle, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Circle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const statusStyles = {

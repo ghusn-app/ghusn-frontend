@@ -658,7 +658,7 @@ function Register() {
                 theme="outline"
                 shape="pill"
                 size="large"
-                width="100%"
+                width="400"
                 text="continue_with"
                 locale="ar"
               />

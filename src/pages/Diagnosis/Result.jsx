@@ -1,4 +1,4 @@
-import { CheckCircle2, ClipboardList, ShieldCheck } from 'lucide-react'
+import { ClipboardList } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import scaleInsectImage from '../../assets/Background-on-the-black-scale-insect.png'
 
