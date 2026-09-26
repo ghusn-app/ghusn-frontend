@@ -171,7 +171,6 @@ function Register() {
         localStorage.setItem('ghosn_refresh_token', data.refresh_token)
       }
 
-      // التوجيه للصفحة الرئيسية بعد النجاح
       navigate('/login')
     } catch (error) {
       console.error('Register request failed:', error)

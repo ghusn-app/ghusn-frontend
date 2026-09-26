@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import Button from '../../components/ui/Button'
 import PasswordInput from '../../components/ui/PasswordInput'
@@ -10,6 +10,7 @@ import resetPasswordIllustration from '../../assets/reset-password.jpg'
 
 
 function ResetPassword() {
+  const location = useLocation()
   const navigate = useNavigate()
 
   // =========================
@@ -82,23 +83,50 @@ function ResetPassword() {
   // Submit
   // =========================
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     if (!validateForm()) {
       return
     }
 
-    // Temporary
-    // سيتم استبدال هذا لاحقًا بطلب API فعلي لتغيير كلمة المرور
-    console.log('Reset password:', formData)
+    const email = localStorage.getItem('ghosn_email') || ''
+    const otp = location.state?.otp || ''
 
-    setSuccessMessage('تم تغيير كلمة المرور بنجاح')
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          otp,
+          password: formData.password,
+          confirm_password: formData.confirmPassword,
+        }),
+      })
 
-    // بعد نجاح العملية يمكن توجيه المستخدم لصفحة تسجيل الدخول
-    setTimeout(() => {
-      navigate('/login')
-    }, 1500)
+      const data = await response.json()
+
+      if (!response.ok) {
+        setErrors({
+          password: data.detail || 'حدث خطأ أثناء تحديث كلمة المرور',
+        })
+        return
+      }
+
+      setSuccessMessage(data.message || 'تم تغيير كلمة المرور بنجاح')
+
+      setTimeout(() => {
+        navigate('/login')
+      }, 1500)
+    } catch (err) {
+      console.error('Reset password failed:', err)
+      setErrors({
+        password: 'تعذر الاتصال بالسيرفر، تحقق من اتصالك بالإنترنت',
+      })
+    }
   }
 
 

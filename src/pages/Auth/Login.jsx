@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 
 import Button from '../../components/ui/Button'
@@ -25,6 +25,8 @@ function Login() {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState('')
+
+  const navigate = useNavigate()
 
 
   // =========================
@@ -126,8 +128,7 @@ function Login() {
         localStorage.setItem('ghosn_refresh_token', data.refresh_token)
       }
 
-      // التوجيه للصفحة الرئيسية بعد النجاح
-      // navigate('/dashboard')
+      navigate('/dashboard')
     } catch (error) {
       console.error('Login request failed:', error)
       setServerError(
@@ -189,8 +190,7 @@ function Login() {
         localStorage.setItem('ghosn_refresh_token', data.refresh_token)
       }
 
-      // التوجيه للصفحة الرئيسية بعد النجاح
-      // navigate('/dashboard')
+      navigate('/dashboard')
     } catch (error) {
       console.error('Google login request failed:', error)
       setServerError(

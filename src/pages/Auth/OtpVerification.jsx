@@ -136,7 +136,7 @@ function OtpVerification() {
   // Submit
   // =========================
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     if (!validateOtp()) {
@@ -144,14 +144,37 @@ function OtpVerification() {
     }
 
     const otpValue = otp.join('')
+    const email = localStorage.getItem('ghosn_email') || ''
 
-    // Temporary
-    // سيتم استبداله لاحقًا بطلب API
-    console.log('OTP:', otpValue)
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          otp: otpValue,
+        }),
+      })
 
-    // الانتقال مؤقتًا إلى الصفحة التالية
-    // غيّر المسار لاحقًا حسب صفحة المشروع
-    navigate('/reset-password')
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.detail || 'رمز التحقق غير صحيح')
+        return
+      }
+
+      navigate('/reset-password', {
+        state: {
+          email,
+          otp: otpValue,
+        },
+      })
+    } catch (err) {
+      console.error('OTP verification failed:', err)
+      setError('تعذر الاتصال بالسيرفر، تحقق من اتصالك بالإنترنت')
+    }
   }
 
 
@@ -159,18 +182,37 @@ function OtpVerification() {
   // Resend OTP
   // =========================
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (timeLeft > 0) {
       return
     }
 
-    console.log('Resend OTP')
+    const email = localStorage.getItem('ghosn_email') || ''
 
-    setOtp(['', '', '', '', ''])
-    setError('')
-    setTimeLeft(59)
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
 
-    inputRefs.current[0]?.focus()
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.detail || 'تعذر إعادة إرسال الرمز')
+        return
+      }
+
+      setOtp(['', '', '', '', ''])
+      setError('')
+      setTimeLeft(59)
+      inputRefs.current[0]?.focus()
+    } catch (err) {
+      console.error('Resend OTP failed:', err)
+      setError('تعذر الاتصال بالسيرفر، تحقق من اتصالك بالإنترنت')
+    }
   }
 
 

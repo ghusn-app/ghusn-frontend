@@ -81,11 +81,9 @@ function ForgotPassword() {
         `${apiBaseUrl}/auth/forgot-password`,
         {
           method: 'POST',
-
           headers: {
             'Content-Type': 'application/json',
           },
-
           body: JSON.stringify({
             email: email.trim(),
           }),
@@ -139,7 +137,6 @@ function ForgotPassword() {
         email.trim()
       )
 
-      // Navigate to email verification page
       navigate('/verify-email', {
         state: {
           email: email.trim(),
